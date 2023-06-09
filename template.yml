@@ -1,0 +1,169 @@
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: template
+  annotations:
+    description: "Something more useful than this"
+objects:
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: helloworld
+    labels:
+      app: helloworld
+  spec:
+    lookupPolicy:
+      local: false
+- kind: BuildConfig
+  apiVersion: build.openshift.io/v1
+  metadata:
+    name: helloworld
+    labels:
+      app: helloworld
+  spec:
+    source:
+      type: Binary
+    strategy:
+      type: Docker
+      dockerStrategy:
+        dockerfilePath: Dockerfile.jvm
+        imageOptimizationPolicy: SkipLayers
+    output:
+      to:
+        kind: ImageStreamTag
+        name: helloworld:latest
+- kind: DeploymentConfig
+  apiVersion: apps.openshift.io/v1
+  metadata:
+    labels:
+      app: helloworld
+    name: helloworld
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      deploymentconfig: helloworld
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: helloworld
+          deploymentconfig: helloworld
+      spec:
+        containers:
+        - image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/helloworld:latest
+          imagePullPolicy: Always
+          name: helloworld
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          - containerPort: 9990
+            protocol: TCP
+          volumeMounts:
+            - name: keystore
+              mountPath: /etc/keystore
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        volumes:
+          - name: keystore
+            secret:
+              secretName: helloworld
+          - name: truststore
+            secret: 
+              secretName: helloworld-trust
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - type: "ImageChange"
+      imageChangeParams:
+        automatic: true
+        from:
+          kind: "ImageStreamTag"
+          name: "helloworld:latest"
+        containerNames:
+          - "helloworld"
+- kind: Service
+  apiVersion: v1
+  metadata:
+    labels:
+      app: helloworld
+    name: helloworld
+    annotations: 
+      service.beta.openshift.io/serving-cert-secret-name: helloworld
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    - name: 9990-tcp
+      port: 9990
+      protocol: TCP
+      targetPort: 9990
+    selector:
+      app: helloworld
+      deploymentconfig: helloworld
+    sessionAffinity: None
+    type: ClusterIP
+- kind: Route
+  apiVersion: route.openshift.io/v1
+  metadata:
+    labels:
+      app: helloworld 
+    name: helloworld 
+  spec:
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: helloworld 
+      weight: 100
+    wildcardPolicy: None
+- kind: Route
+  apiVersion: route.openshift.io/v1
+  metadata:
+    labels:
+      app: helloworld 
+    name: helloworld-secure
+  spec:
+    port:
+      targetPort: 8443-tcp
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: reencrypt
+    to:
+      kind: Service
+      name: helloworld 
+      weight: 100
+    wildcardPolicy: None
+parameters:
+  - name: PROJECT
+    displayName: Project name
+    description: Name of OpenShift project for image stream identification
+    required: true
