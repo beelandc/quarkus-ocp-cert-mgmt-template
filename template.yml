@@ -27,7 +27,7 @@ objects:
     strategy:
       type: Docker
       dockerStrategy:
-        dockerfilePath: Dockerfile.jvm
+        dockerfilePath: src/main/docker/Dockerfile.jvm
         imageOptimizationPolicy: SkipLayers
     output:
       to:
@@ -82,6 +82,7 @@ objects:
           - name: keystore
             secret:
               secretName: helloworld
+              defaultMode: 420
           - name: truststore
             secret: 
               secretName: helloworld-trust
