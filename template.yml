@@ -82,7 +82,7 @@ objects:
           - name: keystore
             secret:
               secretName: helloworld
-              defaultMode: 420
+              defaultMode: 0774
           - name: truststore
             secret: 
               secretName: helloworld-trust
