@@ -75,7 +75,7 @@ objects:
             protocol: TCP
           volumeMounts:
             - name: keystore
-              mountPath: /etc/keystore
+              mountPath: /etc/keystore/
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
         volumes:
